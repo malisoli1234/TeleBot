@@ -33,7 +33,8 @@ app.get('/', (req, res) => {
   res.status(200).json({ 
     status: 'OK', 
     message: 'Telegram Bot is running',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
   });
 });
 
@@ -41,7 +42,8 @@ app.get('/health', (req, res) => {
   res.status(200).json({ 
     status: 'OK', 
     message: 'Health check passed',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
   });
 });
 
@@ -210,20 +212,26 @@ bot.on('polling_error', (error) => {
 // Start server
 async function startServer() {
   try {
-    // Initialize database
-    await initializeDatabase();
-    
-    // Set bot owner if specified
-    if (process.env.BOT_OWNER_ID) {
-      await userService.setUserAsBotOwner(process.env.BOT_OWNER_ID);
-      logger.info(`Bot owner set to: ${process.env.BOT_OWNER_ID}`);
-    }
-
-    // Start HTTP server
+    // Start HTTP server first
     app.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);
-      logger.info('Bot is ready to receive messages!');
     });
+
+    // Initialize database (non-blocking)
+    try {
+      await initializeDatabase();
+      
+      // Set bot owner if specified
+      if (process.env.BOT_OWNER_ID) {
+        await userService.setUserAsBotOwner(process.env.BOT_OWNER_ID);
+        logger.info(`Bot owner set to: ${process.env.BOT_OWNER_ID}`);
+      }
+      
+      logger.info('Bot is ready to receive messages!');
+    } catch (dbError) {
+      logger.error('Database connection failed, but server is running:', dbError);
+      // Don't exit, let the server run without database
+    }
   } catch (error) {
     logger.error('Failed to start server:', error);
     process.exit(1);
