@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:6.0
+    container_name: telegram_bot_mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: telegram_bot
+
+  bot:
+    build: .
+    container_name: telegram_bot
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mongodb
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongodb:27017/telegram_bot
+      - PORT=3000
+    volumes:
+      - ./logs:/app/logs
+      - ./.env:/app/.env
+    command: npm start
+
+volumes:
+  mongodb_data:
