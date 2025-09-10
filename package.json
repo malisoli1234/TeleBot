@@ -4,8 +4,9 @@
   "description": "A modular Telegram bot with Node.js backend and Python ML integration",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
+    "start": "node start.js",
     "dev": "nodemon src/server.js",
+    "server": "node src/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [

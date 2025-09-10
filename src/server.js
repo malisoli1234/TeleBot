@@ -23,7 +23,15 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Initialize Telegram Bot
-const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true });
+const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { 
+  polling: true,
+  request: {
+    agentOptions: {
+      keepAlive: true,
+      family: 4
+    }
+  }
+});
 
 // Middleware
 app.use(express.json());
