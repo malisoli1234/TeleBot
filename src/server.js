@@ -28,6 +28,23 @@ const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true });
 // Middleware
 app.use(express.json());
 
+// Health check endpoint
+app.get('/', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    message: 'Telegram Bot is running',
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    message: 'Health check passed',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Initialize database connection
 async function initializeDatabase() {
   try {
