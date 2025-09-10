@@ -23,15 +23,23 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Initialize Telegram Bot
-const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { 
-  polling: true,
-  request: {
-    agentOptions: {
-      keepAlive: true,
-      family: 4
+let bot = null;
+
+if (process.env.BOT_TOKEN) {
+  bot = new TelegramBot(process.env.BOT_TOKEN, { 
+    polling: true,
+    request: {
+      agentOptions: {
+        keepAlive: true,
+        family: 4
+      }
     }
-  }
-});
+  });
+  logger.info('Bot initialized successfully');
+} else {
+  logger.error('BOT_TOKEN not found in environment variables');
+  process.exit(1);
+}
 
 // Middleware
 app.use(express.json());
@@ -58,23 +66,29 @@ app.get('/health', (req, res) => {
 // Initialize database connection
 async function initializeDatabase() {
   try {
-    await dbConnection.connect();
-    logger.info('Database connected successfully');
+    if (process.env.MONGODB_URI) {
+      await dbConnection.connect();
+      logger.info('Database connected successfully');
+    } else {
+      logger.warn('MONGODB_URI not found, running without database');
+    }
   } catch (error) {
     logger.error('Failed to connect to database:', error);
-    process.exit(1);
+    logger.warn('Continuing without database connection');
   }
 }
 
 // Initialize handlers
-commandHandler.init(bot);
-messageHandler.init(bot);
-replyHandler.init(bot);
-adminHandler.init(bot);
-permissionService.init(bot);
-buttonService.init(bot);
-idService.init(bot);
-economyService.init(bot);
+if (bot) {
+  commandHandler.init(bot);
+  messageHandler.init(bot);
+  replyHandler.init(bot);
+  adminHandler.init(bot);
+  permissionService.init(bot);
+  buttonService.init(bot);
+  idService.init(bot);
+  economyService.init(bot);
+}
 
 // Cleanup expired ID requests every 5 minutes
 setInterval(() => {
@@ -207,13 +221,15 @@ bot.on('message', async (msg) => {
 });
 
 // Error handling
-bot.on('error', (error) => {
-  logger.error('Bot error:', error);
-});
+if (bot) {
+  bot.on('error', (error) => {
+    logger.error('Bot error:', error);
+  });
 
-bot.on('polling_error', (error) => {
-  logger.error('Polling error:', error);
-});
+  bot.on('polling_error', (error) => {
+    logger.error('Polling error:', error);
+  });
+}
 
 // Button clicks are now handled in messageHandler
 
@@ -226,20 +242,19 @@ async function startServer() {
     });
 
     // Initialize database (non-blocking)
-    try {
-      await initializeDatabase();
-      
-      // Set bot owner if specified
-      if (process.env.BOT_OWNER_ID) {
+    await initializeDatabase();
+    
+    // Set bot owner if specified
+    if (process.env.BOT_OWNER_ID && process.env.MONGODB_URI) {
+      try {
         await userService.setUserAsBotOwner(process.env.BOT_OWNER_ID);
         logger.info(`Bot owner set to: ${process.env.BOT_OWNER_ID}`);
+      } catch (error) {
+        logger.error('Failed to set bot owner:', error);
       }
-      
-      logger.info('Bot is ready to receive messages!');
-    } catch (dbError) {
-      logger.error('Database connection failed, but server is running:', dbError);
-      // Don't exit, let the server run without database
     }
+    
+    logger.info('Bot is ready to receive messages!');
   } catch (error) {
     logger.error('Failed to start server:', error);
     process.exit(1);
